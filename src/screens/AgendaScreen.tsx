@@ -1,4 +1,4 @@
-import React, { useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -60,7 +60,6 @@ export const AgendaScreen = () => {
   const [estatus, setEstatus] = useState('');
   const [role, setRole] = useState<string | null>(null); // Nuevo estado para el rol
 
-  const [refreshing, setRefreshing] = useState(false); // 👈 nuevo estado para refresco
 
   // URL base del backend (ajustar si es necesario)
   const API_BASE = 'https://backend-psicologia.fly.dev/api/agenda';
@@ -148,6 +147,9 @@ export const AgendaScreen = () => {
     return date.isBefore(today);
   };
 
+  const isReadOnly = isPastDate(selectedDate);
+
+
   // Abrir modal para nueva cita (solo si la fecha no pasó)
   const openNewAppointmentModal = (date: string) => {
     if (isPastDate(date)) {
@@ -161,10 +163,7 @@ export const AgendaScreen = () => {
 
   // Abrir modal para editar cita (solo si la fecha no pasó)
   const openEditAppointmentModal = (appointment: Appointment) => {
-    if (isPastDate(appointment.date)) {
-      Alert.alert('No puedes modificar citas en días anteriores.');
-      return;
-    }
+
     setSelectedAppointment(appointment);
     setModalidad(appointment.title.split(' - ')[1] || '');
     setSessionNumber(appointment.session_number.toString());
@@ -207,7 +206,8 @@ export const AgendaScreen = () => {
         end_time: eventEnd,
         no_control_user: role === 'usuario' ? Number(noControl) : null,
         no_control_admin: role === 'admin' ? Number(noControl) : null,
-        ...(role === 'admin' && { status: estatus, estatus: estatus }),
+        estatus: role === 'admin' ? estatus : 'Pendiente',
+        status: role === 'admin' ? estatus : 'Pendiente',
       };
 
       const token = await AsyncStorage.getItem('token');
@@ -295,13 +295,28 @@ export const AgendaScreen = () => {
       <Calendar
         onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
         markedDates={{
-          [selectedDate]: { selected: true, selectedColor: '#00adf5' },
           ...appointments.reduce((acc, a) => {
-            acc[a.date] = { marked: true, dotColor: 'red' };
+            // Si el día es el seleccionado y tiene citas, combinamos ambos
+            if (a.date === selectedDate) {
+              acc[a.date] = {
+                selected: true,
+                selectedColor: '#00adf5',
+                marked: true,
+                dotColor: 'red',
+              } as any;
+            } else {
+              acc[a.date] = { marked: true, dotColor: 'red' } as any;
+            }
             return acc;
-          }, {} as Record<string, any>),
+          }, {
+            // Si el día seleccionado no tiene citas, aún debe marcarse como seleccionado
+            [selectedDate]: {
+              selected: true,
+              selectedColor: '#00adf5',
+            }
+          }),
         }}
-        minDate={moment().format('YYYY-MM-DD')}
+
       />
 
       <Text style={styles.title}>Citas para {selectedDate}</Text>
@@ -345,11 +360,12 @@ export const AgendaScreen = () => {
               selectedValue={modalidad}
               onValueChange={(itemValue) => setModalidad(itemValue)}
               style={styles.picker}
+              enabled={!isReadOnly && !(role !== 'admin' && selectedAppointment)} // Solo se desactiva si es usuario y está editando
             >
               <Picker.Item label="-- Selecciona modalidad --" value="" />
               <Picker.Item label="Presencial" value="Presencial" />
-              <Picker.Item label="En linea" value="En linea" />
-            </Picker>
+              <Picker.Item label="Virtual" value="Virtual" />
+            </Picker> 
 
             <Text style={styles.label}>Número de sesión:</Text>
             <TextInput
@@ -358,6 +374,7 @@ export const AgendaScreen = () => {
               value={sessionNumber}
               onChangeText={setSessionNumber}
               placeholder='Número de sesión'
+              editable={!isReadOnly && !(role !== 'admin' && selectedAppointment)} // Solo se desactiva si es usuario y está editando
             />
 
             <Text style={styles.label}>Hora (HH:mm):</Text>
@@ -365,6 +382,7 @@ export const AgendaScreen = () => {
               selectedValue={hora}
               onValueChange={(itemValue) => setHora(itemValue)}
               style={styles.picker}
+              enabled={!isReadOnly && !(role !== 'admin' && selectedAppointment)} // Solo se desactiva si es usuario y está editando
             >
               <Picker.Item label="-- Selecciona hora --" value="" />
               {availableHours.map((h) => (
@@ -386,7 +404,7 @@ export const AgendaScreen = () => {
                       : noControl
                   }
                   //onChangeText={setNoControl}
-                  keyboardType="numeric" 
+                  keyboardType="numeric"
                   style={styles.input}
                   editable={false} // <-- usar "editable" en lugar de "readOnly" en React Native
                 />
@@ -408,9 +426,14 @@ export const AgendaScreen = () => {
 
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.buttonSave} onPress={saveAppointment}>
-                <Text style={styles.buttonText}>Guardar</Text>
-              </TouchableOpacity>
+              {(
+                role === 'admin' || // siempre mostrar para admin
+                (!selectedAppointment && role === 'usuario') // mostrar para user solo si está agendando (no editando)
+              ) && (
+                  <TouchableOpacity style={styles.buttonSave} onPress={saveAppointment}>
+                    <Text style={styles.buttonText}>Guardar</Text>
+                  </TouchableOpacity>
+                )}
 
               <TouchableOpacity
                 style={styles.buttonCancel}
@@ -423,11 +446,16 @@ export const AgendaScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {selectedAppointment && (
-              <TouchableOpacity style={styles.buttonDelete} onPress={deleteAppointment}>
-                <Text style={styles.buttonDeleteText}>Eliminar cita</Text>
-              </TouchableOpacity>
+            {!isReadOnly && (
+              <>
+                {selectedAppointment && role === 'admin' && (
+                  <TouchableOpacity style={styles.buttonDelete} onPress={deleteAppointment}>
+                    <Text style={styles.buttonDeleteText}>Eliminar cita</Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
+
           </View>
         </View>
       </Modal>
@@ -490,6 +518,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#ccc',
     marginBottom: 1,
+    color: '#fff',
   },
   modalButtons: {
     flexDirection: 'row',
