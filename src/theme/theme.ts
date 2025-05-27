@@ -83,4 +83,10 @@ export const globalStyles = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 20,
   },
+  pickerContainer: {
+    // add your styles here
+    backgroundColor: '#aaa',
+    padding: .1,
+    borderRadius: 5,
+  },
 });
