@@ -1,96 +1,195 @@
-import React, { useEffect, useState } from 'react';
-import { Text, View, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, ScrollView, StyleSheet, Alert } from 'react-native';
 import axios from 'axios';
 
 
-
-interface Expediente {
-    id: number;
-    no_control: number;
-    numero_sesiones: number;
-    motivo_consulta: string;
-    desencadenantes_motivo: string;
-    plan_orientacion: string;
-    seguimiento: string;
-  }
-
-
-
 export const ExpedientesScreen = () => {
-  const [expedientes, setExpedientes] = useState<Expediente[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    numeroControl: '',
+    nombre: '',
+    sexo: '',
+    edad: '',
+    estadoCivil: '',
+    direccion: '',
+    telefono: '',
+    ingenieria: '',
+    modalidad: '',
+    semestre: '',
+    fechaRegistro: '',
+    motivoConsulta: '',
+    desencadenantesMotivo: '',
+    planOrientacion: '',
+    seguimiento: '',
+    numeroSesiones: '',
+  });
+
+  const resetFormExceptNumeroControl = () => {
+  setFormData((prev) => ({
+    ...prev,
+    nombre: '',
+    sexo: '',
+    edad: '',
+    estadoCivil: '',
+    direccion: '',
+    telefono: '',
+    ingenieria: '',
+    modalidad: '',
+    semestre: '',
+    fechaRegistro: '',
+  }));
+};
+
+  const handleChange = (name: string, value: string) => {
+  // Si cambia el número de control, reseteamos los campos de usuario
+  if (name === 'numeroControl') {
+    resetFormExceptNumeroControl();
+  }
+  setFormData((prevData) => ({ ...prevData, [name]: value }));
+};
 
   useEffect(() => {
-    axios
-      .get<Expediente[]>('https://backend-psicologia.fly.dev/api/expediente/getAllExpediente')
-      .then((response) => {
-        setExpedientes(response.data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error('Error al obtener expedientes:', error);
-        setLoading(false);
-      });
-  }, []);
+    const fetchData = async () => {
+      if (formData.numeroControl.length < 8) return; // Ajusta la longitud según tu formato
 
-  if (loading) {
-    return <Text>Cargando expedientes...</Text>;
-  }
+      try {
+        const res = await axios.get(`https://backend-psicologia.fly.dev/api/expediente/expedientes/${formData.numeroControl}`);
+        const user = res.data.usuario;
+
+        if (!user) throw new Error("Usuario no encontrado");
+
+        const formattedDate = user.fecha_registro
+          ? new Date(user.fecha_registro).toISOString().split("T")[0]
+          : '';
+
+        setFormData((prev) => ({
+          ...prev,
+          nombre: user.nombre || '',
+          sexo: user.sexo || '',
+          edad: String(user.edad || ''),
+          estadoCivil: user.estado_civil || '',
+          direccion: user.direccion || '',
+          telefono: user.telefono || '',
+          ingenieria: user.ingenieria || '',
+          modalidad: user.modalidad || '',
+          semestre: String(user.semestre || ''),
+          fechaRegistro: formattedDate,
+        }));
+      } catch (error) {
+        Alert.alert("Error", "No se pudo obtener el usuario.");
+      }
+    };
+
+    fetchData();
+  }, [formData.numeroControl]);
+
+  const handleSubmit = async () => {
+    try {
+      const expedienteData = {
+        no_control: formData.numeroControl,
+        motivo_consulta: formData.motivoConsulta,
+        desencadenantes_motivo: formData.desencadenantesMotivo,
+        plan_orientacion: formData.planOrientacion,
+        seguimiento: formData.seguimiento,
+        numero_sesiones: Number(formData.numeroSesiones),
+      };
+
+      await axios.post('https://backend-psicologia.fly.dev/api/expediente/expedientes', expedienteData);
+      Alert.alert("Éxito", "Expediente guardado correctamente.");
+      setFormData({
+        numeroControl: '',
+        nombre: '',
+        sexo: '',
+        edad: '',
+        estadoCivil: '',
+        direccion: '',
+        telefono: '',
+        ingenieria: '',
+        modalidad: '',
+        semestre: '',
+        fechaRegistro: '',
+        motivoConsulta: '',
+        desencadenantesMotivo: '',
+        planOrientacion: '',
+        seguimiento: '',
+        numeroSesiones: '',
+      });
+    } catch (error) {
+      Alert.alert("Error", "No se pudo guardar el expediente.");
+    }
+  };
 
   return (
-    <ScrollView>
-      <View style={styles.container}>
-        <Text style={styles.title}>Expedientes</Text>
-        {expedientes.map((exp) => (
-          <View key={exp.id} style={styles.card}>
-            <Text style={styles.item}>
-              <Text style={styles.label}>No. Control:</Text> {exp.no_control}
-            </Text>
-            <Text style={styles.item}>
-              <Text style={styles.label}>Sesiones:</Text> {exp.numero_sesiones}
-            </Text>
-            <Text style={styles.item}>
-              <Text style={styles.label}>Motivo:</Text> {exp.motivo_consulta}
-            </Text>
-            <Text style={styles.item}>
-              <Text style={styles.label}>Desencadenantes:</Text> {exp.desencadenantes_motivo}
-            </Text>
-            <Text style={styles.item}>
-              <Text style={styles.label}>Plan:</Text> {exp.plan_orientacion}
-            </Text>
-            <Text style={styles.item}>
-              <Text style={styles.label}>Seguimiento:</Text> {exp.seguimiento}
-            </Text>
-          </View>
-        ))}
-      </View>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Generar Expediente</Text>
+
+      {[
+        ['Número de control', 'numeroControl', true],
+        ['Nombre', 'nombre'],
+        ['Edad', 'edad'],
+        ['Teléfono', 'telefono'],
+        ['Ingeniería', 'ingenieria'],
+        ['Modalidad', 'modalidad'],
+        ['Semestre', 'semestre'],
+        ['Fecha de Registro', 'fechaRegistro'],
+        ['Motivo de Consulta', 'motivoConsulta', true],
+        ['Desencadenantes del Motivo', 'desencadenantesMotivo', true],
+        ['Plan de Orientación', 'planOrientacion', true],
+        ['Seguimiento', 'seguimiento', true],
+        ['Número de sesiones', 'numeroSesiones', true],
+      ].map(([label, name, editable = false]) => (
+        <View key={name.toString()} style={styles.inputGroup}>
+          <TextInput
+            style={[
+              styles.input,
+              editable ? styles.inputEditable : styles.inputReadonly
+            ]}
+            value={formData[name as keyof typeof formData]}
+            onChangeText={(text) => handleChange(name as string, text)}
+            editable={!!editable}
+            keyboardType={name === 'edad' || name === 'semestre' || name === 'numeroSesiones' ? 'numeric' : 'default'}
+            placeholder={label as string}
+            placeholderTextColor="#555" // gris oscuro
+          />
+        </View>
+      ))}
+
+      <Button title="Generar Expediente" onPress={handleSubmit} />
     </ScrollView>
   );
-}
-
+};
 
 const styles = StyleSheet.create({
-    container: {
-      padding: 16,
-    },
-    title: {
-      fontSize: 24,
-      marginBottom: 12,
-      fontWeight: 'bold',
-      textAlign: 'center',
-    },
-    card: {
-      padding: 12,
-      marginBottom: 10,
-      backgroundColor: '#f2f2f2',
-      borderRadius: 8,
-      elevation: 2,
-    },
-    item: {
-      fontSize: 16,
-      marginBottom: 4,
-    },
-    label: {
-      fontWeight: 'bold',
-    },
-  });
+  container: {
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  label: {
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  input: {
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  inputEditable: {
+    backgroundColor: '#fff',
+    borderColor: '#007BFF',
+  },
+  inputReadonly: {
+    backgroundColor: '#eee',
+  },
+});
+

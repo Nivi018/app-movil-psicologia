@@ -1,29 +1,32 @@
-// src/context/authContext.tsx
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AuthContextProps {
   isLoggedIn: boolean;
-  login: () => void;
+  userRole: string | null;
+  login: (role: string) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextProps>({
   isLoggedIn: false,
+  userRole: null,
   login: () => {},
   logout: () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadSession = async () => {
       const session = await AsyncStorage.getItem("isLoggedIn");
+      const role = await AsyncStorage.getItem("userRole");
       if (session === "true") {
         setIsLoggedIn(true);
+        if (role) setUserRole(role);
       }
       setLoading(false);
     };
@@ -31,20 +34,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadSession();
   }, []);
 
-  const login = async () => {
+  const login = async (role: string) => {
     setIsLoggedIn(true);
+    setUserRole(role);
     await AsyncStorage.setItem("isLoggedIn", "true");
+    await AsyncStorage.setItem("userRole", role);
   };
 
   const logout = async () => {
     setIsLoggedIn(false);
-    await AsyncStorage.removeItem("isLoggedIn");
+    setUserRole(null);
+    await AsyncStorage.multiRemove(["isLoggedIn", "userRole"]);
   };
 
-  if (loading) return null; // Puedes mostrar un splash aquí si deseas
+  if (loading) return null;
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, userRole, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

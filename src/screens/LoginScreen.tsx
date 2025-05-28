@@ -96,12 +96,12 @@ export const LoginScreen = () => {
       const decoded: any = jwtDecode(token);
       await AsyncStorage.setItem('role', decoded.rol);
 
-      login(); // Cambiar estado global
+      login(decoded.rol); // Llamar a la función login del contexto
 
       Alert.alert('Éxito', 'Inicio de sesión correcto', [
         {
           text: 'Aceptar',
-          onPress: () => navigation.navigate('Expedientes'),
+          onPress: () => navigation.navigate('Agenda', { logged: true, name: decoded.email }),
         },
       ]);
     } else {

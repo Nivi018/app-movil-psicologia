@@ -24,8 +24,8 @@ export const HomeScreen = () => {
   return (
     <View style={globalStyles.container}>
            <PrimaryButton
-                onpress={()=> navigation.navigate('Login' as never)}
-                label='Login'
+                onpress={()=> navigation.navigate('Agenda' as never)}
+                label='Agendar cita'
            />
     </View>
   )

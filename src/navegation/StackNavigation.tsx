@@ -13,6 +13,7 @@ export type RootStackParams = {
     //Registro: undefined,
     Expedientes:undefined,
     Agenda: { logged: boolean; name: string }
+    
 }
 
 const Stack= createStackNavigator<RootStackParams>();
@@ -27,10 +28,10 @@ export const StackNavigator=()=> {
         elevation: 0,
         shadowColor: 'transparent'
     }
-   }}> 
+   }}>
 
 
-        <Stack.Screen  name='Home' component={HomeScreen}/>
+        {/*<Stack.Screen  name='Home' component={HomeScreen}/>*/}
         <Stack.Screen  name='Login' component={LoginScreen}/>
         {/*<Stack.Screen name='Registro' component={RegistroScree}/>*/}
         <Stack.Screen name='Expedientes' component={ExpedientesScreen}/>
