@@ -146,7 +146,7 @@ export const ExpedientesScreen = () => {
             value={formData[name as keyof typeof formData]}
             onChangeText={(text) => handleChange(name as string, text)}
             editable={!!editable}
-            keyboardType={name === 'edad' || name === 'semestre' || name === 'numeroSesiones' ? 'numeric' : 'default'}
+            keyboardType={name === 'edad' || name === 'semestre' || name === 'numeroSesiones' || name === 'numeroControl' ? 'numeric' : 'default'}
             placeholder={label as string}
             placeholderTextColor="#555" // gris oscuro
           />

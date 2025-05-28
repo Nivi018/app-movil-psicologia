@@ -15,7 +15,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import moment from 'moment';
 
-
 type Appointment = {
   id: number;
   no_control_user: number | null;
@@ -41,8 +40,6 @@ const availableHours = [
   '16:00',
 ];
 
-
-
 export const AgendaScreen = () => {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
@@ -58,78 +55,85 @@ export const AgendaScreen = () => {
   const [hora, setHora] = useState('');
   const [noControl, setNoControl] = useState('');
   const [estatus, setEstatus] = useState('');
-  const [role, setRole] = useState<string | null>(null); // Nuevo estado para el rol
+  const [role, setRole] = useState<string | null>(null);
 
-
-  // URL base del backend (ajustar si es necesario)
   const API_BASE = 'https://backend-psicologia.fly.dev/api/agenda';
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const storedRole = await AsyncStorage.getItem('role');
-        const token = await AsyncStorage.getItem('token');
+  // Función para obtener datos del usuario
+  const fetchUserData = async () => {
+    try {
+      const storedRole = await AsyncStorage.getItem('role');
+      const token = await AsyncStorage.getItem('token');
 
-        if (!token) throw new Error('No se encontró el token');
-        if (!storedRole) throw new Error('No se encontró el rol');
+      if (!token) throw new Error('No se encontró el token');
+      if (!storedRole) throw new Error('No se encontró el rol');
 
-        setRole(storedRole);
+      setRole(storedRole);
 
-        let response;
-        if (storedRole === 'admin') {
-          response = await axios.get(
-            'https://backend-psicologia.fly.dev/api/admin/getAdminData',
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        } else {
-          response = await axios.get(
-            'https://backend-psicologia.fly.dev/api/users/getUserData',
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        }
-
-        console.log('Respuesta del usuario:', response.data);
-
-        if (response.data && response.data.no_control) {
-          setNoControl(response.data.no_control.toString());
-        } else {
-          console.warn('no_control no está definido en la respuesta:', response.data);
-        }
-      } catch (error) {
-        console.error('Error al obtener datos del usuario:', error);
-      }
-    };
-
-
-    const fetchAppointments = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) throw new Error('No se encontró el token');
-
-        const response = await axios.get(
-          'https://backend-psicologia.fly.dev/api/agenda/getAllEvents',
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+      let response;
+      if (storedRole === 'admin') {
+        response = await axios.get(
+          'https://backend-psicologia.fly.dev/api/admin/getAdminData',
+          { headers: { Authorization: `Bearer ${token}` } }
         );
+      } else {
+        response = await axios.get(
+          'https://backend-psicologia.fly.dev/api/users/getUserData',
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
 
-        const processed = response.data.map((a: any) => ({
-          ...a,
-          date: a.start_time.split(' ')[0], // yyyy-mm-dd
-        }));
+      if (response.data && response.data.no_control) {
+        setNoControl(response.data.no_control.toString());
+      } else {
+        console.warn('no_control no está definido en la respuesta:', response.data);
+      }
+    } catch (error) {
+      console.error('Error al obtener datos del usuario:', error);
+    }
+  };
 
-        setAppointments(processed);
+  // Función para cargar citas
+  const fetchAppointments = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) throw new Error('No se encontró el token');
+
+      const response = await axios.get(
+        `${API_BASE}/getAllEvents`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const processed = response.data.map((a: any) => ({
+        ...a,
+        date: a.start_time.split(' ')[0], // yyyy-mm-dd
+      }));
+
+      setAppointments(processed);
+    } catch (error) {
+      console.error('Error al cargar citas:', error);
+    }
+  };
+
+  // Alias para recargar citas manualmente
+  const reloadAppointments = fetchAppointments;
+
+  useEffect(() => {
+    const fetchUserDataAndAppointments = async () => {
+      try {
+        await fetchUserData();
+        await reloadAppointments();
       } catch (error) {
-        console.error('Error al cargar citas:', error);
+        console.error(error);
       }
     };
 
-    fetchUserData();
-    fetchAppointments();
+    fetchUserDataAndAppointments();
   }, []);
-
 
   // Función para resetear formulario
   const resetFields = () => {
@@ -149,7 +153,6 @@ export const AgendaScreen = () => {
 
   const isReadOnly = isPastDate(selectedDate);
 
-
   // Abrir modal para nueva cita (solo si la fecha no pasó)
   const openNewAppointmentModal = (date: string) => {
     if (isPastDate(date)) {
@@ -163,7 +166,6 @@ export const AgendaScreen = () => {
 
   // Abrir modal para editar cita (solo si la fecha no pasó)
   const openEditAppointmentModal = (appointment: Appointment) => {
-
     setSelectedAppointment(appointment);
     setModalidad(appointment.title.split(' - ')[1] || '');
     setSessionNumber(appointment.session_number.toString());
@@ -221,7 +223,6 @@ export const AgendaScreen = () => {
         );
 
         if (response.status === 200) {
-          // Actualizar estado local
           setAppointments((prev) =>
             prev.map((item) =>
               item.id === selectedAppointment.id
@@ -292,6 +293,10 @@ export const AgendaScreen = () => {
   return (
     <View style={styles.container}
     >
+
+      <TouchableOpacity style={styles.reloadButton} onPress={reloadAppointments}>
+        <Text style={styles.reloadButtonText}>Recargar Citas</Text> </TouchableOpacity>
+
       <Calendar
         onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
         markedDates={{
@@ -553,5 +558,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  reloadButton: {
+padding: 10,
+backgroundColor: '#00adf5',
+borderRadius: 5,
+marginBottom: 10,
+alignItems: 'center',
+},
+reloadButtonText: {
+color: '#fff',
+fontWeight: 'bold',
+},
 });
 

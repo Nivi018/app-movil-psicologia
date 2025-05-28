@@ -12,6 +12,7 @@ import { globalColors } from "../theme/theme";
 import { useWindowDimensions, View, Image } from "react-native";
 import { AgendaScreen } from "../screens/AgendaScreen";
 import { ExpedientesScreen } from "../screens/ExpedientesScreen";
+import { MostrarExpedientesScreen } from "../screens/MostrarExpedientesScreen";
 import { useAuth } from "../context/authContext"; // <-- Asegúrate que la ruta sea correcta
 
 const Drawer = createDrawerNavigator();
@@ -40,6 +41,9 @@ export const MyDrower = () => {
       <Drawer.Screen name="Agenda" component={AgendaScreen} />
       {userRole === "admin" && (
         <Drawer.Screen name="Expediente" component={ExpedientesScreen} />
+      )}
+      {userRole === "admin" && (
+        <Drawer.Screen name="Mostrar Expedientes" component={MostrarExpedientesScreen} />
       )}
     </Drawer.Navigator>
   );
